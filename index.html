@@ -138,11 +138,13 @@ container.addEventListener('click', e=>{
   const x = (e.clientX - rect.left - originX)/scale;
   const y = (e.clientY - rect.top - originY)/scale;
   const text = prompt('Texto del cuadrado:', '');
-  if(text!==null){
-    const id=uid();
-    const item={id,text,x,y,w:100,h:100,layer:currentLayer};
-    db.collection('items').doc(id).set(item);
-  }
+if(text !== null && text.trim() !== '') {
+  const id = uid();
+  const item = { id, text, x, y, w: 100, h: 100, layer: currentLayer };
+  state[id] = item;          // agregar al estado local
+  renderItems();             // renderizar inmediatamente
+  db.collection('items').doc(id).set(item); // subir a Firebase
+}
 });
 
 // Delete with Delete key
