@@ -8,28 +8,136 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 body { margin: 0; overflow: hidden; background-color: #222; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-#toolbar { position: fixed; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 8px; display: flex; gap: 8px; }
-#toolbar button { background: #444; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+#toolbar {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  background: rgba(0,0,0,0.7);
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+}
+#toolbar button {
+  background: #444;
+  border: none;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
 #toolbar button:hover { background: #666; }
+
+/* Leyenda debajo de la toolbar */
+#legend {
+  position: fixed;
+  top: 60px; /* debajo de la toolbar */
+  left: 10px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  max-width: 220px;
+  z-index: 10;
+}
+#legend ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 5px 0 0 0;
+}
+#legend li {
+  margin-bottom: 4px;
+}
+#legend strong { color: #48cfad; }
+
 #canvasContainer { width: 100vw; height: 100vh; position: relative; overflow: hidden; cursor: grab; }
 #canvasContainer:active { cursor: grabbing; }
 #blueprint { position: absolute; top: 0; left: 0; transform-origin: 0 0; max-width: none; max-height: none; }
 #overlay { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-.item { position: absolute; border: 2px solid #181818; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; pointer-events:auto; transform-origin: 0 0; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: grab; }
-.item textarea { width: 100%; height: 100%; background: transparent; color: #fff; border: none; resize: none; text-align: center; font-size: 14px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 600; overflow:hidden; cursor: text; }
-.btn-delete { position:absolute; top:2px; right:4px; width:18px; height:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; font-weight:bold; background:transparent; border-radius:50%; }
-.resize-handle { position:absolute; width:12px; height:12px; right:0; bottom:0; cursor:se-resize; background:rgba(255,255,255,0.7); border-radius:3px; display:none; }
+
+.item {
+  position: absolute;
+  border: 2px solid #181818;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events:auto;
+  transform-origin: 0 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  cursor: grab;
+}
+.item textarea {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: #fff;
+  border: none;
+  resize: none;
+  text-align: center;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+  overflow:hidden;
+  cursor: text;
+}
+.btn-delete {
+  position:absolute;
+  top:2px;
+  right:4px;
+  width:18px;
+  height:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:#fff;
+  font-weight:bold;
+  background:transparent;
+  border-radius:50%;
+}
+.resize-handle {
+  position:absolute;
+  width:12px;
+  height:12px;
+  right:0;
+  bottom:0;
+  cursor:se-resize;
+  background:rgba(255,255,255,0.7);
+  border-radius:3px;
+  display:none;
+}
 </style>
 </head>
 <body>
+
 <div id="toolbar">
   <button id="btnBase">Blueprint base</button>
   <button id="btnMapa">Mapa general</button>
 </div>
+
+<div id="legend">
+  <strong>Controles:</strong>
+  <ul>
+    <li><b>Zoom:</b> rueda del ratón</li>
+    <li><b>Panning:</b> click derecho o medio + arrastrar</li>
+    <li><b>Nuevo item:</b> doble clic</li>
+    <li><b>Mover item:</b> arrastrar</li>
+    <li><b>Redimensionar item:</b> arrastrar esquina inferior derecha</li>
+    <li><b>Borrar item:</b> ✕ en item o tecla Delete</li>
+  </ul>
+</div>
+
 <div id="canvasContainer">
   <img id="blueprint" src="https://i.ibb.co/YK2Cyyn/BAS2E.png" alt="Plano base">
   <div id="overlay"></div>
 </div>
+
 <script>
 // Firebase Config
 const firebaseConfig = {
@@ -89,145 +197,81 @@ document.getElementById('btnBase').addEventListener('click', ()=>{currentLayer='
 document.getElementById('btnMapa').addEventListener('click', ()=>{currentLayer='MAPA'; img.src=MAPA_URL;});
 
 // IMAGE LOAD
-img.onload=()=>{
-  img.width = img.naturalWidth;
-  img.height = img.naturalHeight;
-  updateTransform();
-};
+img.onload=()=>{ img.width=img.naturalWidth; img.height=img.naturalHeight; updateTransform(); };
 
 // RENDER ITEMS
 function renderItems(){
   Object.values(state).forEach(it=>{
     if(it.layer !== currentLayer) return;
-
     let el = document.getElementById('item-' + it.id);
     if(!el){
-      el = document.createElement('div');
-      el.className='item';
-      el.id='item-' + it.id;
-      overlay.appendChild(el);
+      el = document.createElement('div'); el.className='item'; el.id='item-'+it.id; overlay.appendChild(el);
 
-      // TEXTAREA
-      const ta = document.createElement('textarea');
-      ta.value = it.text;
+      const ta = document.createElement('textarea'); ta.value = it.text;
       ta.addEventListener('input', ()=>{
         it.text = ta.value;
         it.h = Math.min(ta.scrollHeight/scale, 200/scale);
         it.w = Math.max(100, ta.scrollWidth/scale);
         db.collection('items').doc(it.id).set(it);
-        el.style.width = (it.w*scale)+'px';
-        el.style.height = (it.h*scale)+'px';
+        el.style.width=(it.w*scale)+'px'; el.style.height=(it.h*scale)+'px';
       });
-      ta.addEventListener('keydown', e=>{
-        if(e.key==='Enter' && !e.shiftKey){
-          e.preventDefault();
-          db.collection('items').doc(it.id).set(it);
-        }
-      });
+      ta.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); db.collection('items').doc(it.id).set(it); }});
       el.appendChild(ta);
 
-      // DELETE BUTTON con confirm
-      const btnDelete = document.createElement('div');
-      btnDelete.className='btn-delete';
-      btnDelete.innerText='✕';
-      btnDelete.addEventListener('click', e=>{
-        e.stopPropagation();
-        if(confirm("Seguro que quieres borrar este item?")){
-          db.collection('items').doc(it.id).delete();
-          delete state[it.id];
-          overlay.removeChild(el);
-        }
-      });
+      const btnDelete = document.createElement('div'); btnDelete.className='btn-delete'; btnDelete.innerText='✕';
+      btnDelete.addEventListener('click', e=>{ e.stopPropagation(); if(confirm("Seguro que quieres borrar este item?")){ db.collection('items').doc(it.id).delete(); delete state[it.id]; overlay.removeChild(el); }});
       el.appendChild(btnDelete);
 
-      // RESIZE HANDLE
-      const handle = document.createElement('div');
-      handle.className='resize-handle';
-      el.appendChild(handle);
-
+      const handle = document.createElement('div'); handle.className='resize-handle'; el.appendChild(handle);
       el.addEventListener('mouseenter', ()=>{ handle.style.display='block'; });
       el.addEventListener('mouseleave', ()=>{ handle.style.display='none'; });
-
       handle.addEventListener('mousedown', e=>{
-        e.stopPropagation();
-        e.preventDefault();
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const startW = it.w;
-        const startH = it.h;
-        function onMouseMove(ev){
-          it.w = Math.max(50, startW + (ev.clientX - startX)/scale);
-          it.h = Math.max(50, startH + (ev.clientY - startY)/scale);
-          db.collection('items').doc(it.id).set(it);
-          el.style.width = (it.w*scale)+'px';
-          el.style.height = (it.h*scale)+'px';
-        }
-        function onMouseUp(){
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('mouseup', onMouseUp);
-        }
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
+        e.stopPropagation(); e.preventDefault();
+        const startX=e.clientX, startY=e.clientY, startW=it.w, startH=it.h;
+        function onMouseMove(ev){ it.w=Math.max(50, startW+(ev.clientX-startX)/scale); it.h=Math.max(50,startH+(ev.clientY-startY)/scale); db.collection('items').doc(it.id).set(it); el.style.width=(it.w*scale)+'px'; el.style.height=(it.h*scale)+'px'; }
+        function onMouseUp(){ window.removeEventListener('mousemove',onMouseMove); window.removeEventListener('mouseup',onMouseUp); }
+        window.addEventListener('mousemove',onMouseMove); window.addEventListener('mouseup',onMouseUp);
       });
 
-      // DRAG
       el.addEventListener('mousedown', e=>{
         if(e.button!==0 || e.target===handle) return;
-        e.preventDefault();
-        selectedItemId = it.id;
-        let sx=e.clientX, sy=e.clientY;
-        const ox=it.x, oy=it.y;
-        function move(ev){
-          it.x = ox + (ev.clientX-sx)/scale;
-          it.y = oy + (ev.clientY-sy)/scale;
-          db.collection('items').doc(it.id).set(it);
-          el.style.left = (it.x*scale + originX)+'px';
-          el.style.top = (it.y*scale + originY)+'px';
-        }
+        e.preventDefault(); selectedItemId = it.id;
+        let sx=e.clientX, sy=e.clientY; const ox=it.x, oy=it.y;
+        function move(ev){ it.x=ox+(ev.clientX-sx)/scale; it.y=oy+(ev.clientY-sy)/scale; db.collection('items').doc(it.id).set(it); el.style.left=(it.x*scale+originX)+'px'; el.style.top=(it.y*scale+originY)+'px'; }
         function up(){ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); }
-        window.addEventListener('mousemove',move);
-        window.addEventListener('mouseup',up);
+        window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
       });
     }
 
-    // Mostrar como pinpoint si zoom muy pequeño
-    if(scale < 0.25){
-      el.style.width = '8px';
-      el.style.height = '8px';
-      el.style.borderRadius = '50%';
-      el.querySelector('textarea').style.display = 'none';
-      el.querySelector('.btn-delete').style.display = 'none';
+    if(scale<0.10){
+      el.style.width='8px'; el.style.height='8px'; el.style.borderRadius='50%';
+      el.querySelector('textarea').style.display='none';
+      el.querySelector('.btn-delete').style.display='none';
     } else {
-      el.style.width = (it.w*scale)+'px';
-      el.style.height = (it.h*scale)+'px';
-      el.style.borderRadius = '6px';
-      el.querySelector('textarea').style.display = 'block';
-      el.querySelector('.btn-delete').style.display = 'flex';
+      el.style.width=(it.w*scale)+'px'; el.style.height=(it.h*scale)+'px'; el.style.borderRadius='6px';
+      el.querySelector('textarea').style.display='block';
+      el.querySelector('.btn-delete').style.display='flex';
     }
 
-    el.style.left = (it.x*scale + originX)+'px';
-    el.style.top = (it.y*scale + originY)+'px';
+    el.style.left=(it.x*scale+originX)+'px';
+    el.style.top=(it.y*scale+originY)+'px';
     el.querySelector('textarea').value = it.text;
   });
 }
 
-// CREAR NUEVO ITEM al doble clic
+// NUEVO ITEM doble clic
 container.addEventListener('dblclick', e=>{
   if(e.target.closest('.item')) return;
   const rect = container.getBoundingClientRect();
   const clickX = (e.clientX - rect.left - originX)/scale;
   const clickY = (e.clientY - rect.top - originY)/scale;
-  const id = uid();
-  const itemWidth = 100;
-  const itemHeight = 100;
-  const x = clickX - itemWidth/2;
-  const y = clickY - itemHeight/2;
-  const item = {id, text:'', x, y, w:itemWidth, h:itemHeight, layer:currentLayer};
-  state[id] = item;
+  const id = uid(); const itemWidth=100, itemHeight=100;
+  const x=clickX-itemWidth/2, y=clickY-itemHeight/2;
+  const item={id,text:'',x,y,w:itemWidth,h:itemHeight,layer:currentLayer};
+  state[id]=item;
   db.collection('items').doc(id).set(item);
   renderItems();
-  const ta = document.getElementById('item-' + id).querySelector('textarea');
-  if(ta) ta.focus();
+  const ta=document.getElementById('item-'+id).querySelector('textarea'); if(ta) ta.focus();
 });
 
 // DELETE KEY
@@ -254,4 +298,3 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
-
