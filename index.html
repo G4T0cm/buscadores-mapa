@@ -191,7 +191,7 @@ function renderItems(){
     }
 
     // Mostrar como pinpoint si zoom muy pequeño
-    if(scale < 0.15){
+    if(scale < 0.25){
       el.style.width = '8px';
       el.style.height = '8px';
       el.style.borderRadius = '50%';
@@ -254,3 +254,4 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
