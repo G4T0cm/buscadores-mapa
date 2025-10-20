@@ -107,24 +107,34 @@ function renderItems(){
     el.style.height = (it.h*scale)+'px';
 
     // TEXTAREA
-    const ta = document.createElement('textarea');
-    ta.value = it.text;
-    ta.style.fontSize = (14*scale)+'px';
-    ta.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-    ta.style.fontWeight = '600';
-    ta.style.width='100%';
-    ta.style.height='100%';
-    ta.style.overflowY='auto';
-    ta.style.maxHeight='200px';
-    ta.style.resize='none';
-    ta.addEventListener('input', ()=>{
-      it.text = ta.value;
-      it.h = Math.min(ta.scrollHeight/scale, 200/scale);
-      it.w = Math.max(100, ta.scrollWidth/scale);
-      db.collection('items').doc(it.id).set(it);
-      el.style.width = (it.w*scale)+'px';
-      el.style.height = (it.h*scale)+'px';
-    });
+const ta = document.createElement('textarea');
+ta.value = it.text;
+ta.style.fontSize = (14*scale)+'px';
+ta.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+ta.style.fontWeight = '600';
+ta.style.width='100%';
+ta.style.height='100%';
+ta.style.overflowY='auto';
+ta.style.maxHeight='200px';
+ta.style.resize='none';
+
+// INPUT: actualizar tamaño y Firestore, sin renderItems()
+ta.addEventListener('input', ()=>{
+  it.text = ta.value;
+  it.h = Math.min(ta.scrollHeight/scale, 200/scale);
+  it.w = Math.max(100, ta.scrollWidth/scale);
+  db.collection('items').doc(it.id).set(it); // sincroniza Firestore
+  el.style.width = (it.w*scale)+'px';
+  el.style.height = (it.h*scale)+'px';
+});
+
+// Shift+Enter para salto de línea
+ta.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    db.collection('items').doc(it.id).set(it);
+  }
+});
 
     ta.addEventListener('keydown', e=>{
       if(e.key==='Enter' && !e.shiftKey){
@@ -284,6 +294,7 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
 
 
 
