@@ -15,8 +15,8 @@
   #canvasContainer:active { cursor: grabbing; }
   #blueprint { position: absolute; top: 0; left: 0; transform-origin: 0 0; max-width: none; max-height: none; }
   #overlay { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-  .item { position: absolute; cursor: move; border: 2px solid #181818; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; pointer-events:auto; transform-origin: 0 0; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
-  .item textarea { width: 100%; height: 100%; background: transparent; color: #fff; border: none; resize: none; text-align: center; font-size: 14px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 600; overflow:hidden; }
+  .item { position: absolute; border: 2px solid #181818; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; pointer-events:auto; transform-origin: 0 0; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: grab; }
+  .item textarea { width: 100%; height: 100%; background: transparent; color: #fff; border: none; resize: none; text-align: center; font-size: 14px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 600; overflow:hidden; cursor: text; }
 </style>
 </head>
 <body>
@@ -47,14 +47,14 @@ const MAPA_URL = 'https://i.ibb.co/1t0z4xkL/GTAV-ATLUS-8192x8192.png';
 const img = document.getElementById('blueprint');
 const container = document.getElementById('canvasContainer');
 const overlay = document.getElementById('overlay');
-let scale = 0.3, originX = 0, originY = 0, isPanning = false, startX = 0, startY = 0;
+
+let scale = 0.3, originX = 0, originY = 0;
+let isPanning = false, startX = 0, startY = 0;
 let currentLayer = 'BASE', selectedItemId = null;
 let state = {};
 
-// UID
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
-// TRANSFORM
 function updateTransform(){
   img.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
   renderItems();
@@ -107,35 +107,21 @@ function renderItems(){
     el.style.height = (it.h*scale)+'px';
 
     // TEXTAREA
-const ta = document.createElement('textarea');
-ta.value = it.text;
-ta.style.fontSize = (14*scale)+'px';
-ta.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-ta.style.fontWeight = '600';
-ta.style.width='100%';
-ta.style.height='100%';
-ta.style.overflowY='auto';
-ta.style.maxHeight='200px';
-ta.style.resize='none';
-
-// INPUT: actualizar tamaño y Firestore, sin renderItems()
-ta.addEventListener('input', ()=>{
-  it.text = ta.value;
-  it.h = Math.min(ta.scrollHeight/scale, 200/scale);
-  it.w = Math.max(100, ta.scrollWidth/scale);
-  db.collection('items').doc(it.id).set(it); // sincroniza Firestore
-  el.style.width = (it.w*scale)+'px';
-  el.style.height = (it.h*scale)+'px';
-});
-
-// Shift+Enter para salto de línea
-ta.addEventListener('keydown', e=>{
-  if(e.key==='Enter' && !e.shiftKey){
-    e.preventDefault();
-    db.collection('items').doc(it.id).set(it);
-  }
-});
-
+    const ta = document.createElement('textarea');
+    ta.value = it.text;
+    ta.style.fontSize = (14*scale)+'px';
+    ta.style.width='100%';
+    ta.style.height='100%';
+    ta.style.overflowY='auto';
+    ta.style.resize='none';
+    ta.addEventListener('input', ()=>{
+      it.text = ta.value;
+      it.h = Math.min(ta.scrollHeight/scale, 200/scale);
+      it.w = Math.max(100, ta.scrollWidth/scale);
+      db.collection('items').doc(it.id).set(it);
+      el.style.width = (it.w*scale)+'px';
+      el.style.height = (it.h*scale)+'px';
+    });
     ta.addEventListener('keydown', e=>{
       if(e.key==='Enter' && !e.shiftKey){
         e.preventDefault();
@@ -178,7 +164,11 @@ ta.addEventListener('keydown', e=>{
     handle.style.cursor='se-resize';
     handle.style.background='rgba(255,255,255,0.7)';
     handle.style.borderRadius='3px';
+    handle.style.display='none';
     el.appendChild(handle);
+
+    el.addEventListener('mouseenter', ()=>{ handle.style.display='block'; });
+    el.addEventListener('mouseleave', ()=>{ handle.style.display='none'; });
 
     handle.addEventListener('mousedown', e=>{
       e.stopPropagation();
@@ -187,7 +177,6 @@ ta.addEventListener('keydown', e=>{
       const startY = e.clientY;
       const startW = it.w;
       const startH = it.h;
-
       function onMouseMove(ev){
         it.w = Math.max(50, startW + (ev.clientX - startX)/scale);
         it.h = Math.max(50, startH + (ev.clientY - startY)/scale);
@@ -195,19 +184,17 @@ ta.addEventListener('keydown', e=>{
         el.style.width = (it.w*scale)+'px';
         el.style.height = (it.h*scale)+'px';
       }
-
       function onMouseUp(){
         window.removeEventListener('mousemove', onMouseMove);
         window.removeEventListener('mouseup', onMouseUp);
       }
-
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
     });
 
     // DRAG
     el.addEventListener('mousedown', e=>{
-      if(e.button!==0 || e.target===handle) return; // no arrastrar si estás sobre el handle
+      if(e.button!==0 || e.target===handle) return;
       e.preventDefault();
       selectedItemId = it.id;
       let sx=e.clientX, sy=e.clientY;
@@ -227,26 +214,10 @@ ta.addEventListener('keydown', e=>{
     overlay.appendChild(el);
   });
 }
-// CREATE NEW ITEM
-container.addEventListener('click', e=>{
-  if(e.target!==container) return;
-  const rect = container.getBoundingClientRect();
-  const x = (e.clientX - rect.left - originX)/scale;
-  const y = (e.clientY - rect.top - originY)/scale;
-  const text = prompt('Texto del cuadrado:', '');
-  if(text!==null && text.trim()!==''){
-    const id = uid();
-    const item = {id, text, x, y, w:100, h:100, layer:currentLayer};
-    state[id] = item;      // añadir al estado local para verlo inmediatamente
-    renderItems();          // renderizar al instante
-    db.collection('items').doc(id).set(item); // sincronizar con Firebase
-  }
-  
-});
-// DOBLE CLIC PARA CREAR ITEM CENTRADO
-container.addEventListener('dblclick', e => {
-  if(e.target.closest('.item')) return;
 
+// CREAR ITEM DOBLE CLIC CENTRADO
+container.addEventListener('dblclick', e=>{
+  if(e.target.closest('.item')) return;
   const rect = container.getBoundingClientRect();
   const clickX = (e.clientX - rect.left - originX)/scale;
   const clickY = (e.clientY - rect.top - originY)/scale;
@@ -254,23 +225,17 @@ container.addEventListener('dblclick', e => {
   const id = uid();
   const itemWidth = 100;
   const itemHeight = 100;
-
-  // Centrar el item en el cursor
-  const x = clickX - itemWidth / 2;
-  const y = clickY - itemHeight / 2;
-
-  const item = {id, text: '', x, y, w:itemWidth, h:itemHeight, layer:currentLayer};
+  const x = clickX - itemWidth/2;
+  const y = clickY - itemHeight/2;
+  const item = {id, text:'', x, y, w:itemWidth, h:itemHeight, layer:currentLayer};
   state[id] = item;
 
-  renderItems(); // renderizamos el nuevo item
-
+  renderItems();
   db.collection('items').doc(id).set(item);
 
-  // AUTO-FOCUS EN EL NUEVO TEXTAREA
   const el = overlay.querySelector(`.item:nth-last-child(1) textarea`);
   if(el) el.focus();
 });
-
 
 // DELETE KEY
 window.addEventListener('keydown', e=>{
@@ -282,7 +247,7 @@ window.addEventListener('keydown', e=>{
   }
 });
 
-// REAL-TIME FIRESTORE LISTENER
+// FIRESTORE LISTENER
 db.collection('items').onSnapshot(snapshot=>{
   snapshot.docChanges().forEach(change=>{
     const data = change.doc.data();
@@ -294,13 +259,3 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
