@@ -107,16 +107,26 @@ function renderItems(){
     ta.style.fontSize = (14*scale)+'px';
     ta.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
     ta.style.fontWeight = '600';
-    ta.style.height='100%';
-    ta.style.width='100%';
+    ta.style.height = '100%';
+    ta.style.width = '100%';
+    ta.style.overflowY = 'auto';       // scroll interno si es demasiado largo
+    ta.style.maxHeight = '200px';      // altura máxima del textarea
+    ta.style.resize = 'none';          // evitar resize manual
     ta.addEventListener('input', ()=> {
       it.text = ta.value;
-      it.h = ta.scrollHeight/scale;
+      it.h = Math.min(ta.scrollHeight/scale, 200/scale); // limitar altura
       it.w = Math.max(100, ta.scrollWidth/scale);
       db.collection('items').doc(it.id).set(it);
-      // NO HACER renderItems() aquí para no perder foco
       el.style.width = (it.w*scale)+'px';
       el.style.height = (it.h*scale)+'px';
+    });
+
+    // Shift+Enter permite salto de línea normal
+    ta.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault(); // evita hacer otra cosa con Enter
+        db.collection('items').doc(it.id).set(it);
+      }
     });
 
     el.appendChild(ta);
@@ -138,7 +148,7 @@ function renderItems(){
     btnDelete.style.alignItems = 'center';
     btnDelete.style.justifyContent = 'center';
     btnDelete.addEventListener('click', e=>{
-      e.stopPropagation(); // evitar drag o click de creación
+      e.stopPropagation();
       db.collection('items').doc(it.id).delete();
       delete state[it.id];
       renderItems();
@@ -167,7 +177,6 @@ function renderItems(){
     overlay.appendChild(el);
   });
 }
-
 
 // Add new item
 container.addEventListener('click', e=>{
@@ -205,5 +214,6 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
 
 
