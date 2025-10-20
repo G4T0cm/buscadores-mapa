@@ -243,7 +243,7 @@ function renderItems(){
       });
     }
 
-    if(scale<0.10){
+    if(scale<0.40){
       el.style.width='8px'; el.style.height='8px'; el.style.borderRadius='50%';
       el.querySelector('textarea').style.display='none';
       el.querySelector('.btn-delete').style.display='none';
@@ -298,3 +298,4 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
