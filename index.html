@@ -105,6 +105,9 @@ function renderItems(){
     el.style.top = (it.y*scale + originY)+'px';
     el.style.width = (it.w*scale)+'px';
     el.style.height = (it.h*scale)+'px';
+    el.style.position='absolute';
+    el.style.display='flex';
+    el.style.flexDirection='column';
 
     // TEXTAREA
     const ta = document.createElement('textarea');
@@ -125,7 +128,6 @@ function renderItems(){
       el.style.width = (it.w*scale)+'px';
       el.style.height = (it.h*scale)+'px';
     });
-
     ta.addEventListener('keydown', e=>{
       if(e.key==='Enter' && !e.shiftKey){
         e.preventDefault();
@@ -168,7 +170,12 @@ function renderItems(){
     handle.style.cursor='se-resize';
     handle.style.background='rgba(255,255,255,0.7)';
     handle.style.borderRadius='3px';
+    handle.style.display='none'; // inicialmente oculto
     el.appendChild(handle);
+
+    // Mostrar handle al pasar el mouse
+    el.addEventListener('mouseenter', ()=>{ handle.style.display='block'; });
+    el.addEventListener('mouseleave', ()=>{ handle.style.display='none'; });
 
     handle.addEventListener('mousedown', e=>{
       e.stopPropagation();
@@ -197,7 +204,7 @@ function renderItems(){
 
     // DRAG
     el.addEventListener('mousedown', e=>{
-      if(e.button!==0 || e.target===handle) return; // no arrastrar si estás sobre el handle
+      if(e.button!==0 || e.target===handle) return;
       e.preventDefault();
       selectedItemId = it.id;
       let sx=e.clientX, sy=e.clientY;
@@ -255,6 +262,7 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
 
 
 
