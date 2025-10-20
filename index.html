@@ -233,22 +233,34 @@ container.addEventListener('click', e=>{
   }
   
 });
-// DOBLE CLIC PARA CREAR ITEM
+// DOBLE CLIC PARA CREAR ITEM CENTRADO
 container.addEventListener('dblclick', e => {
-  // Ignorar si clicas sobre un item o sus hijos
   if(e.target.closest('.item')) return;
 
   const rect = container.getBoundingClientRect();
-  const x = (e.clientX - rect.left - originX)/scale;
-  const y = (e.clientY - rect.top - originY)/scale;
+  const clickX = (e.clientX - rect.left - originX)/scale;
+  const clickY = (e.clientY - rect.top - originY)/scale;
 
   const id = uid();
-  const item = {id, text: '', x, y, w:100, h:100, layer:currentLayer};
-  state[id] = item;       // render inmediato
-  renderItems();
+  const itemWidth = 100;
+  const itemHeight = 100;
 
-  db.collection('items').doc(id).set(item); // sincronización en tiempo real
+  // Centrar el item en el cursor
+  const x = clickX - itemWidth / 2;
+  const y = clickY - itemHeight / 2;
+
+  const item = {id, text: '', x, y, w:itemWidth, h:itemHeight, layer:currentLayer};
+  state[id] = item;
+
+  renderItems(); // renderizamos el nuevo item
+
+  db.collection('items').doc(id).set(item);
+
+  // AUTO-FOCUS EN EL NUEVO TEXTAREA
+  const el = overlay.querySelector(`.item:nth-last-child(1) textarea`);
+  if(el) el.focus();
 });
+
 
 // DELETE KEY
 window.addEventListener('keydown', e=>{
@@ -272,6 +284,7 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
 
 
 
