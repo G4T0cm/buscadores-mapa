@@ -48,14 +48,19 @@ const img = document.getElementById('blueprint');
 const container = document.getElementById('canvasContainer');
 const overlay = document.getElementById('overlay');
 let scale = 0.3, originX = 0, originY = 0, isPanning = false, startX = 0, startY = 0;
-let currentLayer = 'BASE';
-let selectedItemId = null;
+let currentLayer = 'BASE', selectedItemId = null;
+let state = {};
 
+// UID
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+// TRANSFORM
 function updateTransform(){
   img.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
   renderItems();
 }
 
+// ZOOM & PAN
 container.addEventListener('wheel', e=>{
   e.preventDefault();
   const rect = container.getBoundingClientRect();
@@ -67,30 +72,30 @@ container.addEventListener('wheel', e=>{
   scale *= delta;
   updateTransform();
 });
-container.addEventListener('mousedown', e=>{ if(e.button===1||e.button===2){isPanning=true; startX=e.clientX-originX; startY=e.clientY-originY;} });
-container.addEventListener('mousemove', e=>{if(isPanning){originX=e.clientX-startX; originY=e.clientY-startY; updateTransform();}});
-container.addEventListener('mouseup', ()=>{isPanning=false;});
-container.addEventListener('mouseleave', ()=>{isPanning=false;});
+container.addEventListener('mousedown', e=>{
+  if(e.button===1||e.button===2){ isPanning=true; startX=e.clientX-originX; startY=e.clientY-originY; }
+});
+container.addEventListener('mousemove', e=>{
+  if(isPanning){ originX=e.clientX-startX; originY=e.clientY-startY; updateTransform(); }
+});
+container.addEventListener('mouseup', ()=>{ isPanning=false; });
+container.addEventListener('mouseleave', ()=>{ isPanning=false; });
 container.addEventListener('contextmenu', e=>e.preventDefault());
 
+// LAYERS
 document.getElementById('btnBase').addEventListener('click', ()=>{currentLayer='BASE'; img.src=BASE_URL;});
 document.getElementById('btnMapa').addEventListener('click', ()=>{currentLayer='MAPA'; img.src=MAPA_URL;});
 
+// IMAGE LOAD
 img.onload=()=>{
-  if(img.src===BASE_URL){
-    const aspect = img.naturalWidth / img.naturalHeight;
-    img.width = 8192; img.height = 8192 / aspect;
-  } else { img.width=8192; img.height=8192; }
+  img.width = img.naturalWidth;
+  img.height = img.naturalHeight;
   updateTransform();
 };
 
-let state = {};
-
-function uid(){return Math.random().toString(36).slice(2,9);}
-
+// RENDER ITEMS
 function renderItems(){
   overlay.innerHTML='';
-
   Object.values(state).forEach(it=>{
     if(it.layer!==currentLayer) return;
 
@@ -107,46 +112,45 @@ function renderItems(){
     ta.style.fontSize = (14*scale)+'px';
     ta.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
     ta.style.fontWeight = '600';
-    ta.style.height = '100%';
-    ta.style.width = '100%';
-    ta.style.overflowY = 'auto';       // scroll interno si es demasiado largo
-    ta.style.maxHeight = '200px';      // altura máxima del textarea
-    ta.style.resize = 'none';          // evitar resize manual
-    ta.addEventListener('input', ()=> {
+    ta.style.width='100%';
+    ta.style.height='100%';
+    ta.style.overflowY='auto';
+    ta.style.maxHeight='200px';
+    ta.style.resize='none';
+    ta.addEventListener('input', ()=>{
       it.text = ta.value;
-      it.h = Math.min(ta.scrollHeight/scale, 200/scale); // limitar altura
+      it.h = Math.min(ta.scrollHeight/scale, 200/scale);
       it.w = Math.max(100, ta.scrollWidth/scale);
       db.collection('items').doc(it.id).set(it);
       el.style.width = (it.w*scale)+'px';
       el.style.height = (it.h*scale)+'px';
     });
 
-    // Shift+Enter permite salto de línea normal
-    ta.addEventListener('keydown', e => {
-      if(e.key === 'Enter' && !e.shiftKey){
-        e.preventDefault(); // evita hacer otra cosa con Enter
+    ta.addEventListener('keydown', e=>{
+      if(e.key==='Enter' && !e.shiftKey){
+        e.preventDefault();
         db.collection('items').doc(it.id).set(it);
       }
     });
 
     el.appendChild(ta);
 
-    // BORRAR CON X
+    // DELETE BUTTON
     const btnDelete = document.createElement('div');
-    btnDelete.innerText = '✕';
-    btnDelete.style.position = 'absolute';
-    btnDelete.style.top = '2px';
-    btnDelete.style.right = '4px';
-    btnDelete.style.cursor = 'pointer';
-    btnDelete.style.color = '#fff';
-    btnDelete.style.fontWeight = 'bold';
-    btnDelete.style.background = 'rgba(255,0,0,0.7)';
-    btnDelete.style.borderRadius = '50%';
-    btnDelete.style.width = '18px';
-    btnDelete.style.height = '18px';
-    btnDelete.style.display = 'flex';
-    btnDelete.style.alignItems = 'center';
-    btnDelete.style.justifyContent = 'center';
+    btnDelete.innerText='✕';
+    btnDelete.style.position='absolute';
+    btnDelete.style.top='2px';
+    btnDelete.style.right='4px';
+    btnDelete.style.cursor='pointer';
+    btnDelete.style.color='#fff';
+    btnDelete.style.fontWeight='bold';
+    btnDelete.style.background='rgba(255,0,0,0.7)';
+    btnDelete.style.borderRadius='50%';
+    btnDelete.style.width='18px';
+    btnDelete.style.height='18px';
+    btnDelete.style.display='flex';
+    btnDelete.style.alignItems='center';
+    btnDelete.style.justifyContent='center';
     btnDelete.addEventListener('click', e=>{
       e.stopPropagation();
       db.collection('items').doc(it.id).delete();
@@ -178,31 +182,33 @@ function renderItems(){
   });
 }
 
-// Add new item
+// CREATE NEW ITEM
 container.addEventListener('click', e=>{
-  if(e.target!==img) return;
+  if(e.target!==container) return;
   const rect = container.getBoundingClientRect();
   const x = (e.clientX - rect.left - originX)/scale;
   const y = (e.clientY - rect.top - originY)/scale;
   const text = prompt('Texto del cuadrado:', '');
-if(text !== null && text.trim() !== '') {
-  const id = uid();
-  const item = { id, text, x, y, w: 100, h: 100, layer: currentLayer };
-  state[id] = item;          // agregar al estado local
-  renderItems();             // renderizar inmediatamente
-  db.collection('items').doc(id).set(item); // subir a Firebase
-}
-});
-
-// Delete with Delete key
-window.addEventListener('keydown', e=>{
-  if(e.key==='Delete' && selectedItemId){
-    db.collection('items').doc(selectedItemId).delete();
-    selectedItemId=null;
+  if(text!==null && text.trim()!==''){
+    const id = uid();
+    const item = {id, text, x, y, w:100, h:100, layer:currentLayer};
+    state[id] = item;      // añadir al estado local para verlo inmediatamente
+    renderItems();          // renderizar al instante
+    db.collection('items').doc(id).set(item); // sincronizar con Firebase
   }
 });
 
-// Real-time listener
+// DELETE KEY
+window.addEventListener('keydown', e=>{
+  if(e.key==='Delete' && selectedItemId){
+    db.collection('items').doc(selectedItemId).delete();
+    delete state[selectedItemId];
+    selectedItemId=null;
+    renderItems();
+  }
+});
+
+// REAL-TIME FIRESTORE LISTENER
 db.collection('items').onSnapshot(snapshot=>{
   snapshot.docChanges().forEach(change=>{
     const data = change.doc.data();
@@ -214,6 +220,7 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
 
 
 
