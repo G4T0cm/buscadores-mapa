@@ -231,6 +231,23 @@ container.addEventListener('click', e=>{
     renderItems();          // renderizar al instante
     db.collection('items').doc(id).set(item); // sincronizar con Firebase
   }
+  
+});
+// DOBLE CLIC PARA CREAR ITEM
+container.addEventListener('dblclick', e => {
+  // Ignorar si clicas sobre un item o sus hijos
+  if(e.target.closest('.item')) return;
+
+  const rect = container.getBoundingClientRect();
+  const x = (e.clientX - rect.left - originX)/scale;
+  const y = (e.clientY - rect.top - originY)/scale;
+
+  const id = uid();
+  const item = {id, text: '', x, y, w:100, h:100, layer:currentLayer};
+  state[id] = item;       // render inmediato
+  renderItems();
+
+  db.collection('items').doc(id).set(item); // sincronización en tiempo real
 });
 
 // DELETE KEY
@@ -255,6 +272,7 @@ db.collection('items').onSnapshot(snapshot=>{
 </script>
 </body>
 </html>
+
 
 
 
