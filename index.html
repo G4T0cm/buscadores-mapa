@@ -17,6 +17,8 @@ body { margin: 0; overflow: hidden; background-color: #222; color: #fff; font-fa
 #overlay { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
 .item { position: absolute; border: 2px solid #181818; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; pointer-events:auto; transform-origin: 0 0; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: grab; }
 .item textarea { width: 100%; height: 100%; background: transparent; color: #fff; border: none; resize: none; text-align: center; font-size: 14px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 600; overflow:hidden; cursor: text; }
+.btn-delete { position:absolute; top:2px; right:4px; width:18px; height:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; font-weight:bold; background:transparent; border-radius:50%; }
+.resize-handle { position:absolute; width:12px; height:12px; right:0; bottom:0; cursor:se-resize; background:rgba(255,255,255,0.7); border-radius:3px; display:none; }
 </style>
 </head>
 <body>
@@ -103,7 +105,6 @@ function renderItems(){
       el = document.createElement('div');
       el.className='item';
       el.id='item-' + it.id;
-      el.style.position='absolute';
       overlay.appendChild(el);
 
       // TEXTAREA
@@ -125,41 +126,23 @@ function renderItems(){
       });
       el.appendChild(ta);
 
-      // DELETE BUTTON sin fondo rojo
+      // DELETE BUTTON con confirm
       const btnDelete = document.createElement('div');
+      btnDelete.className='btn-delete';
       btnDelete.innerText='✕';
-      btnDelete.style.position='absolute';
-      btnDelete.style.top='2px';
-      btnDelete.style.right='4px';
-      btnDelete.style.cursor='pointer';
-      btnDelete.style.color='#fff';
-      btnDelete.style.fontWeight='bold';
-      btnDelete.style.background='transparent';
-      btnDelete.style.borderRadius='50%';
-      btnDelete.style.width='18px';
-      btnDelete.style.height='18px';
-      btnDelete.style.display='flex';
-      btnDelete.style.alignItems='center';
-      btnDelete.style.justifyContent='center';
       btnDelete.addEventListener('click', e=>{
         e.stopPropagation();
-        db.collection('items').doc(it.id).delete();
-        delete state[it.id];
-        overlay.removeChild(el);
+        if(confirm("Seguro que quieres borrar este item?")){
+          db.collection('items').doc(it.id).delete();
+          delete state[it.id];
+          overlay.removeChild(el);
+        }
       });
       el.appendChild(btnDelete);
 
       // RESIZE HANDLE
       const handle = document.createElement('div');
-      handle.style.position='absolute';
-      handle.style.width='12px';
-      handle.style.height='12px';
-      handle.style.right='0';
-      handle.style.bottom='0';
-      handle.style.cursor='se-resize';
-      handle.style.background='rgba(255,255,255,0.7)';
-      handle.style.borderRadius='3px';
-      handle.style.display='none';
+      handle.className='resize-handle';
       el.appendChild(handle);
 
       el.addEventListener('mouseenter', ()=>{ handle.style.display='block'; });
@@ -207,11 +190,23 @@ function renderItems(){
       });
     }
 
-    // Actualizar posición y tamaño sin recrear elementos
+    // Mostrar como pinpoint si zoom muy pequeño
+    if(scale < 0.15){
+      el.style.width = '8px';
+      el.style.height = '8px';
+      el.style.borderRadius = '50%';
+      el.querySelector('textarea').style.display = 'none';
+      el.querySelector('.btn-delete').style.display = 'none';
+    } else {
+      el.style.width = (it.w*scale)+'px';
+      el.style.height = (it.h*scale)+'px';
+      el.style.borderRadius = '6px';
+      el.querySelector('textarea').style.display = 'block';
+      el.querySelector('.btn-delete').style.display = 'flex';
+    }
+
     el.style.left = (it.x*scale + originX)+'px';
     el.style.top = (it.y*scale + originY)+'px';
-    el.style.width = (it.w*scale)+'px';
-    el.style.height = (it.h*scale)+'px';
     el.querySelector('textarea').value = it.text;
   });
 }
@@ -238,10 +233,12 @@ container.addEventListener('dblclick', e=>{
 // DELETE KEY
 window.addEventListener('keydown', e=>{
   if(e.key==='Delete' && selectedItemId){
-    db.collection('items').doc(selectedItemId).delete();
-    delete state[selectedItemId];
-    selectedItemId=null;
-    renderItems();
+    if(confirm("Seguro que quieres borrar este item?")){
+      db.collection('items').doc(selectedItemId).delete();
+      delete state[selectedItemId];
+      selectedItemId=null;
+      renderItems();
+    }
   }
 });
 
